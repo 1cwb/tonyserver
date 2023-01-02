@@ -3,19 +3,19 @@
 #include <functional>
 #include <memory>
 #include <sys/epoll.h>
-#include "Timer.h"
+#include "Timestamp.h"
 
 class EventLoop;
 class Channel : public NonCopyAble
 {
 public:
     using EventCallback = std::function<void ()>;
-    using ReadEventCallback = std::function<void()>;
+    using ReadEventCallback = std::function<void(Timestamp)>;
 
     Channel(EventLoop* loop, int32_t fd);
     ~Channel();
 
-    void handleEvent();
+    void handleEvent(Timestamp receiveTime);
     void setReadCallBack(ReadEventCallback cb)
     {
         readCallback_ = std::move(cb);
@@ -101,7 +101,7 @@ public:
 private:
     static std::string eventsToString(int32_t fd, int32_t ev);
     void update();
-    void handleEventWithGuard();
+    void handleEventWithGuard(Timestamp receiveTime);
 private:
     EventLoop*          loop_;
     const int32_t       fd_;
@@ -118,6 +118,6 @@ private:
     EventCallback       errorCallback_;
 private:
     static const int32_t kNoneEvent = 0;
-    static const int32_t kReadEvent = EPOLLIN | EPOLLPRI;
+    static const int32_t kReadEvent = EPOLLIN | EPOLLPRI | EPOLLET;
     static const int32_t kWriteEvent = EPOLLOUT;
 };

@@ -6,6 +6,8 @@
 #include <mutex>
 #include "noncopyable.h"
 #include "Epoll.h"
+#include "Timestamp.h"
+#include "TimerQueue.h"
 
 class Channel;
 class Epoll;
@@ -25,6 +27,12 @@ public:
     void runInLoop(Functor cb);
     void queueInLoop(Functor cb);
     size_t queueSize() const;
+
+    TimerId runAt(Timestamp time, TimerCallback cb);
+    TimerId runAfter(double delay, TimerCallback cb);
+    TimerId runEvery(double interval, TimerCallback cb);
+    void cancel(TimerId timerId);
+
     void wakeup();
     void updateChannel(Channel* channel);
     void removeChannel(Channel* channel);
@@ -52,7 +60,9 @@ private:
     std::atomic<bool> callingPendingFunctors_;
     int64_t iteration_;
     const std::thread::id threadId_;
+    Timestamp pollReturnTime_;
     Epoll* epoll_;
+    TimerQueue* timerQueue_;
     int32_t wakeupFd_;
     Channel* wakeupChannel_;
     ChannelList activeChannel_;

@@ -9,6 +9,7 @@
 #include <sys/epoll.h>
 #include <sys/fcntl.h>
 #include "EventLoop.h"
+#include "Timestamp.h"
 using namespace std;
 
 #define ERROR_CHECK(ret) \
@@ -86,12 +87,33 @@ int main(int argc, char** argv)
 //epoll
     cout << "server run" << endl;
     EventLoop mevLoop;
-
-
+    EventLoop* p = nullptr;
+    auto tmp = [](EventLoop** ev){
+        EventLoop mevLoopsub1;
+        *ev = mevLoopsub1.getEventLoopOfCurrentThread();
+        mevLoopsub1.loop();
+    };
+    thread th1(tmp,&p);
+    this_thread::sleep_for(chrono::seconds(1));
+    if(p == nullptr)
+    {
+        cout << "P is null" << endl;
+        abort();
+    }
     Channel* listenChannel = new Channel(&mevLoop, sesockfd);
     listenChannel->enableReading();
-    listenChannel->setReadCallBack([&](){
+    listenChannel->setReadCallBack([&](Timestamp timestamp){
         cout << "xxxxx sb connect now" << endl;
+        int32_t connfd = getconnectfd(listenChannel->fd());
+        Channel* ch = new Channel(p,connfd);
+        ch->enableReading();
+        ch->setReadCallBack([&](Timestamp timestamp){
+            char buff[1024]={0};
+            if(read(ch->fd(),buff,1024) > 0)
+            {
+                cout << "recieve: " << buff << endl;
+            }
+        });
     });
     cout << "server run ----" << endl;
     mevLoop.loop();

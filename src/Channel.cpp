@@ -43,11 +43,11 @@ void Channel::remove()
     addedToLoop_ = false;
     loop_->removeChannel(this);
 }
-void Channel::handleEvent()
+void Channel::handleEvent(Timestamp receiveTime)
 {
-    handleEventWithGuard();
+    handleEventWithGuard(receiveTime);
 }
-void Channel::handleEventWithGuard()
+void Channel::handleEventWithGuard(Timestamp receiveTime)
 {
     eventHandling_ = true;
     cout << revensToString() << endl;
@@ -73,7 +73,7 @@ void Channel::handleEventWithGuard()
     {
         if(readCallback_)
         {
-            readCallback_();
+            readCallback_(receiveTime);
         }
     }
     if(revents_ & EPOLLOUT)

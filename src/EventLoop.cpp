@@ -34,6 +34,7 @@ EventLoop::EventLoop()
  iteration_(0),
  threadId_(this_thread::get_id()),
  epoll_(new Epoll(this)),
+ timerQueue_(new TimerQueue(this)),
  wakeupFd_(createEventfd()),
  wakeupChannel_(new Channel(this, wakeupFd_)),
  currentActiveChannel_(nullptr)
@@ -69,7 +70,11 @@ EventLoop::~EventLoop()
         delete epoll_;
         epoll_ = nullptr;
     }
-
+    if(timerQueue_)
+    {
+        delete timerQueue_;
+        timerQueue_ = nullptr;
+    }
     ::close(wakeupFd_);
     t_loopInThisThread = nullptr;
 }
@@ -85,13 +90,13 @@ void EventLoop::loop()
     while(!quit_)
     {
         activeChannel_.clear();
-        epoll_->poll(kPollTimeMs, &activeChannel_);
+        pollReturnTime_ = epoll_->poll(kPollTimeMs, &activeChannel_);
         ++ iteration_;
         eventHandling_ = true;
         for(Channel* channel : activeChannel_)
         {
             currentActiveChannel_ = channel;
-            currentActiveChannel_->handleEvent();
+            currentActiveChannel_->handleEvent(pollReturnTime_);
         }
         currentActiveChannel_ = nullptr;
         eventHandling_ = false;
@@ -139,6 +144,25 @@ size_t EventLoop::queueSize() const
     return pendingFunctors_.size();
 }
 
+TimerId EventLoop::runAt(Timestamp time, TimerCallback cb)
+{
+    return timerQueue_->addTimer(std::move(cb), time, 0.0);
+}
+TimerId EventLoop::runAfter(double delay, TimerCallback cb)
+{
+    Timestamp time(addTime(Timestamp::now(),delay));
+    return runAt(time, std::move(cb));
+}
+TimerId EventLoop::runEvery(double interval, TimerCallback cb)
+{
+    Timestamp time(addTime(Timestamp::now(),interval));
+    return timerQueue_->addTimer(std::move(cb), time, interval);
+}
+void EventLoop::cancel(TimerId timerId)
+{
+    return timerQueue_->cancel(timerId);
+}
+
 void EventLoop::updateChannel(Channel* channel)
 {
     assert(channel->ownerLoop() == this);
@@ -170,6 +194,7 @@ void EventLoop::abortNotInLoopThread()
   cout << "EventLoop::abortNotInLoopThread - EventLoop " << this
             << " was created in threadId_ = " << threadId_
             << ", current thread id = " <<  this_thread::get_id() << endl;
+            ::abort();
 }
 
 void EventLoop::wakeup()

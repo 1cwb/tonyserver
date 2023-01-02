@@ -35,10 +35,11 @@ Epoll::~Epoll()
     ::close(epollfd_);
 }
 
-int32_t Epoll::poll(int32_t timeoutMs, ChannelList* activeChannels)
+Timestamp Epoll::poll(int32_t timeoutMs, ChannelList* activeChannels)
 {
     size_t numEvents = ::epoll_wait(epollfd_, &*events_.begin(), static_cast<int32_t>(events_.size()),timeoutMs);
     int savedErrno = errno;
+    Timestamp now(Timestamp::now());
     if(numEvents > 0)
     {
         fillActiveChannels(numEvents, activeChannels);
@@ -59,7 +60,7 @@ int32_t Epoll::poll(int32_t timeoutMs, ChannelList* activeChannels)
             cout << "Epoll error happend" << strerror(errno) << endl;
         }
     }
-    return 0;
+    return now;
 }
 
 void Epoll::fillActiveChannels(size_t numEvents, ChannelList* activeChannels) const

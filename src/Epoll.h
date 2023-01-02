@@ -10,6 +10,7 @@
 #include "noncopyable.h"
 //#include "EventLoop.h"
 #include "Channel.h"
+#include "Timestamp.h"
 
 class EventLoop;
 class Epoll : public NonCopyAble
@@ -18,7 +19,7 @@ public:
     using ChannelList = std::vector<Channel*>;
     Epoll(EventLoop* loop);
     ~Epoll();
-    int32_t poll(int32_t timeoutMs, ChannelList* activeChannels);
+    Timestamp poll(int32_t timeoutMs, ChannelList* activeChannels);
     void updateChannel(Channel* channel);
     void removeChannel(Channel* channel);
     bool hasChannel(Channel* channel) const;
