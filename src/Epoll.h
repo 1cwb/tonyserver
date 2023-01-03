@@ -8,7 +8,7 @@
 #include "Timer.h"
 #include <unistd.h>
 #include "noncopyable.h"
-//#include "EventLoop.h"
+#include <thread>
 #include "Channel.h"
 #include "Timestamp.h"
 
@@ -32,10 +32,21 @@ private:
 
     void update(int32_t operation, Channel* channel);
 
+    void assertInLoopThread() const
+    {
+        if(threadId_ != std::this_thread::get_id())
+        {
+            std::cout << "EventLoop::abortNotInLoopThread - EventLoop " << this
+            << " was created in threadId_ = " << threadId_
+            << ", current thread id = " <<  std::this_thread::get_id() << std::endl;
+            ::abort();
+        }
+    }
+
     int32_t epollfd_;
     EventList events_;
     EventLoop* ownerLoop_;
-
+    const std::thread::id threadId_;
     using ChannelMap = std::map<int32_t, Channel*>;
     ChannelMap channels_;
 };

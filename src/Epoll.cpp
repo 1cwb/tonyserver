@@ -22,7 +22,8 @@ const int32_t kDeleted = 2;
 Epoll::Epoll(EventLoop* loop)
 : epollfd_(::epoll_create1(EPOLL_CLOEXEC)),
   events_(kInitEventListSize),
-  ownerLoop_(loop)
+  ownerLoop_(loop),
+  threadId_(this_thread::get_id())
 {
     if(epollfd_ < 0)
     {
@@ -92,6 +93,7 @@ void Epoll::update(int32_t operation, Channel* channel)
 }
 void Epoll::updateChannel(Channel* channel)
 {
+    assertInLoopThread();
     const int32_t index = channel->index();
     if(index == kNew || index == kDeleted)
     {
@@ -128,6 +130,7 @@ void Epoll::updateChannel(Channel* channel)
 }
 void Epoll::removeChannel(Channel* channel)
 {
+    assertInLoopThread();
     int32_t fd = channel->fd();
     assert(channels_.find(fd) != channels_.end());
     assert(channels_[fd] == channel);
