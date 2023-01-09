@@ -51,7 +51,7 @@ Timestamp Epoll::poll(int32_t timeoutMs, ChannelList* activeChannels)
     }
     else if(numEvents == 0)
     {
-        cout << " nothing happend " << endl;
+        //cout << " nothing happend " << endl;
     }
     else
     {

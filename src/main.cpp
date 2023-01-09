@@ -10,6 +10,7 @@
 #include <sys/fcntl.h>
 #include "EventLoop.h"
 #include "Timestamp.h"
+#include "EventLoopThreadPoll.h"
 using namespace std;
 
 #define ERROR_CHECK(ret) \
@@ -84,82 +85,34 @@ int main(int argc, char** argv)
 
     ERROR_CHECK(listen(sesockfd, 20));
     
-//epoll
-    cout << "server run" << endl;
     EventLoop mevLoop;
-    EventLoop* p = nullptr;
-    auto tmp = [](EventLoop** ev){
-        EventLoop mevLoopsub1;
-        *ev = mevLoopsub1.getEventLoopOfCurrentThread();
-        mevLoopsub1.loop();
-    };
-    thread th1(tmp,&p);
-    this_thread::sleep_for(chrono::seconds(1));
-    if(p == nullptr)
-    {
-        cout << "P is null" << endl;
-        abort();
-    }
+    EventLoopThreadPoll poll(&mevLoop, "server");
+    poll.setThreadNum(3);
+    poll.start();
     Channel* listenChannel = new Channel(&mevLoop, sesockfd);
     listenChannel->enableReading();
-    listenChannel->setReadCallBack([&](Timestamp timestamp){
+    listenChannel->setReadCallBack([&listenChannel,&poll](Timestamp timestamp){
         cout << "xxxxx sb connect now" << endl;
         int32_t connfd = getconnectfd(listenChannel->fd());
-        Channel* ch = new Channel(p,connfd);
-        ch->enableReading();
-        ch->setReadCallBack([&](Timestamp timestamp){
-            char buff[1024]={0};
-            if(read(ch->fd(),buff,1024) > 0)
-            {
-                cout << "recieve: " << buff << endl;
-            }
-        });
-    });
-    cout << "server run ----" << endl;
-    mevLoop.loop();
-/*
-    vector<Channel*> connectChannel;
-    while(true)
-    { 
-        connectChannel = mepoll.poll();
-        if(connectChannel.size() > 0)
+        if(connfd > 0)
         {
-            for(auto& ch : connectChannel)
-            {
-                if(ch == listenChannel)
-                {
-                    int connfd = getconnectfd(ch->getFd());
-                    FD_CHECK(connfd);
-                    Channel* mch = new Channel(&mepoll, connfd, EPOLLPRI | EPOLLRDHUP| EPOLLIN | EPOLLET);
-                    mch->setHandleRead([](Channel* xch){
-                        printf("Events = %x\n",xch->getRecvEvents());
-                        if(xch->getRecvEvents() & ( EPOLLRDHUP))
-                        {
-                            char* buff[256] = {0};
-                            read(xch->getFd(),buff,256);
-                            printf("buff is %s\n",buff);
-                            printf("client close  %d\n",xch->getFd());
-                            xch->getEpoll()->epollDel(xch);
-                            delete xch;
-                        }
-                        else if(xch->getRecvEvents() & (EPOLLIN | EPOLLPRI | EPOLLRDHUP))
-                        {
-                            
-                            char* buff[256] = {0};
-                            ssize_t n = read(xch->getFd(),buff,256);
-                        printf("buff is %s\n",buff);
-                        } 
-                    });
-                    ch->getEpoll()->epollAdd(mch);
-                }
-                else
-                {
-                    ch->handleRead();
-                }
-            }
+            EventLoop* const iloop = poll.getNextLoop();
+            iloop->runInLoop([=](){
+                Channel* newch = new Channel(iloop,connfd);
+                newch->enableReading();
+                newch->setReadCallBack([=](Timestamp timestamp){
+                    char buf[1024] = {0};
+                    ::read(newch->fd(),buf,1024);
+                    cout << "revieve data: " << buf << endl;
+                });
+                newch->setCloseCallback([=](){
+                    cout << newch->fd() << " disconnect " << endl;
+                });
+            });
         }
-    }
-    */
+    });
+    mevLoop.loop();
+    delete listenChannel;
     close(sesockfd);
     return 0;
 }

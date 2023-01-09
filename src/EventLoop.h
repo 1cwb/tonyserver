@@ -47,6 +47,10 @@ public:
     bool isInLoopThread() const {return threadId_ == std::this_thread::get_id();}
     bool eventHandling() const {return eventHandling_;}
     static EventLoop* getEventLoopOfCurrentThread();
+    std::thread::id getLoopThreadId() const
+    {
+        return threadId_;
+    }
 private:
     void abortNotInLoopThread();
     void handleRead();

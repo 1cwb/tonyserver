@@ -22,6 +22,7 @@ Channel::Channel(EventLoop* loop, int32_t fd)
     eventHandling_(false),
     addedToLoop_(false)
 {
+
 }
 Channel::~Channel()
 {

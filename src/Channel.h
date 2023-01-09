@@ -118,6 +118,6 @@ private:
     EventCallback       errorCallback_;
 private:
     static const int32_t kNoneEvent = 0;
-    static const int32_t kReadEvent = EPOLLIN | EPOLLPRI | EPOLLET;
+    static const int32_t kReadEvent = EPOLLIN | EPOLLPRI | EPOLLERR | EPOLLHUP | EPOLLRDHUP;
     static const int32_t kWriteEvent = EPOLLOUT;
 };

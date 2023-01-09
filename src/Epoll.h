@@ -25,6 +25,7 @@ public:
     bool hasChannel(Channel* channel) const;
 private:
     using EventList = std::vector<struct epoll_event>;
+    using ChannelMap = std::map<int32_t, Channel*>;
 
     static const int32_t kInitEventListSize = 16;
 
@@ -47,6 +48,5 @@ private:
     EventList events_;
     EventLoop* ownerLoop_;
     const std::thread::id threadId_;
-    using ChannelMap = std::map<int32_t, Channel*>;
     ChannelMap channels_;
 };
